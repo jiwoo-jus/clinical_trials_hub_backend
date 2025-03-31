@@ -1,0 +1,1 @@
+"pubmed pmc open access"[Filter] AND "clinicaltrials gov"[Secondary Source ID]

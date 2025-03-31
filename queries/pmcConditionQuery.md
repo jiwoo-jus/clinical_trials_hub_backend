@@ -1,0 +1,1 @@
+"open access"[Filter] AND "clinicaltrials gov"[All Fields]
