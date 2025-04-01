@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
-from services import pmc_service, openai_service
+from services import pmc_service, openai_service, test_service
+import json
 
 router = APIRouter()
 
@@ -18,6 +19,8 @@ async def get_structured_info(pmcid: str):
     try:
         content = pmc_service.get_pmc_full_text_xml(pmcid)
         structured_info = openai_service.extract_structured_info(content)
+        # structured_info = test_service.extract_structured_info(content)
+        print("Structured Info:", json.dumps(structured_info, indent=2))
         return {"pmcid": pmcid, "structured_info": structured_info}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

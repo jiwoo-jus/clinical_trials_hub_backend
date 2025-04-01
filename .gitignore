@@ -25,3 +25,7 @@ logs/
 
 # IDE
 .idea/
+
+# ETC
+test_service.py
+sample
