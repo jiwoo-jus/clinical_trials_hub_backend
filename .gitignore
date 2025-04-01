@@ -27,5 +27,5 @@ logs/
 .idea/
 
 # ETC
-test_service.py
+# test_service.py
 sample
