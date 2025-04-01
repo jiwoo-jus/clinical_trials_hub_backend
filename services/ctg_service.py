@@ -6,7 +6,8 @@ def search_ctg(refined_query: dict) -> list:
         base_url = "https://clinicaltrials.gov/api/v2/studies"
         params = {
             "query.term": query_string,
-            "fields": "NCTId,BriefTitle,OverallStatus,HasResults,protocolSection.referencesModule.references",
+            # "fields": "NCTId,BriefTitle,OverallStatus,HasResults,protocolSection.referencesModule.references",
+            "fields": "protocolSection,resultsSection,annotationSection,documentSection,derivedSection,hasResults",
             "format": "json",
             "filter.overallStatus": "COMPLETED",
             "sort": "@relevance",
@@ -32,7 +33,8 @@ def search_ctg(refined_query: dict) -> list:
                 "id": nct_id,
                 "title": title,
                 "references": references,
-                "hasResults": has_results
+                "hasResults": has_results,
+                "structured_info": study
             })
         return results
     except Exception as e:
