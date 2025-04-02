@@ -18,7 +18,7 @@ async def get_pmc_full_text_html(pmcid: str):
 async def get_structured_info(pmcid: str):
     try:
         content = pmc_service.get_pmc_full_text_xml(pmcid)
-        structured_info = openai_service.extract_structured_info(content)
+        structured_info = openai_service.get_structured_info_with_cache(pmcid, content)
         # structured_info = test_service.extract_structured_info(content)
         print("Structured Info:", json.dumps(structured_info, indent=2))
         return {"pmcid": pmcid, "structured_info": structured_info}
