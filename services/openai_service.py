@@ -3,6 +3,7 @@ import os
 import json
 from pathlib import Path
 from openai import AzureOpenAI  # Assuming AzureOpenAI is installed and configured
+import time
 
 def load_prompt(file_name: str, variables: dict) -> str:
     prompt_path = Path(__file__).parent.parent / "prompts" / file_name
@@ -63,56 +64,8 @@ def chat_about_paper(paper_content: str, user_question: str) -> dict:
         parsed = {"answer": result_text, "evidence": []}
     return parsed
 
-'''
 def extract_structured_info(paper_content: str) -> dict:
-    # 여러 프롬프트 템플릿 파일 목록 (필요에 따라 조정)
-    prompt_templates = ["extractStructuredInfo_part1.md", "extractStructuredInfo_part2.md"]
-    client = AzureOpenAI(
-        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-        api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-        api_version=os.getenv("AZURE_OPENAI_API_VERSION")
-    )
-    aggregated_data = {}
-
-    # 각 프롬프트 템플릿에 대해 별도 요청 처리
-    for template_file in prompt_templates:
-        prompt = load_prompt(template_file, {"paperContent": paper_content})
-        retries = 0
-        success = False
-        while retries < 3 and not success:
-            try:
-                # 스트리밍 응답 요청 (stream=True)
-                response_stream = client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[
-                        {"role": "system", "content": "You are a specialized assistant trained to extract structured data from clinical trial papers."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    stream=True,
-                    response_format={"type": "json_object"}
-                )
-                # 스트리밍 응답을 청크 단위로 처리하여 응답 텍스트를 누적
-                chunks = []
-                for chunk in response_stream:
-                    # chunk에서 "content"가 있는 부분만 추출 (구현 방식은 라이브러리에 따라 다를 수 있음)
-                    delta = chunk.choices[0].delta
-                    if "content" in delta:
-                        chunks.append(delta["content"])
-                result_text = "".join(chunks).strip()
-
-                # JSON 파싱 시도
-                part_data = json.loads(result_text)
-                # 각 템플릿의 결과를 병합 (필드 충돌이 없도록 주의)
-                aggregated_data.update(part_data)
-                success = True
-            except Exception as e:
-                retries += 1
-                if retries >= 3:
-                    aggregated_data[f"error_{template_file}"] = f"Failed after 2 retries: {str(e)}"
-    return aggregated_data
-'''
-
-def extract_structured_info(paper_content: str) -> dict:
+    print("[openai_service.py - extract_structured_info] start")
     """
     여러 개의 분할된 프롬프트 템플릿을 사용하여 구조화된 데이터를 추출합니다.
     이제 프롬프트는 그룹별(예: protocolSection, resultsSection)로 분리되어 있으며,
@@ -224,10 +177,12 @@ def extract_structured_info(paper_content: str) -> dict:
                 # 그룹별 결과에 병합 (키 충돌 시 후속 값이 덮어씌워집니다)
                 aggregated_data[group].update(partial_data)
                 success = True
+                print(f"[extract_structured_info] Success: {prompt_file}")
             except Exception as e:
                     retries += 1
                     if retries >= 3:
                         aggregated_data[group][f"error_{prompt_file}"] = f"Failed after retries: {str(e)}"
+                        print(f"[extract_structured_info] Fail: {prompt_file}")
     
     return aggregated_data
 
