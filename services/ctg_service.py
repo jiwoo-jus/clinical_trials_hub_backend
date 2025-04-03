@@ -1,12 +1,12 @@
 import requests
 
-def search_ctg(refined_query: dict) -> list:
+def search_ctg(refined_input_data: dict) -> list:
     try:
-        query_string = refined_query.get("query", "")
         base_url = "https://clinicaltrials.gov/api/v2/studies"
         params = {
-            "query.term": query_string,
-            # "fields": "NCTId,BriefTitle,OverallStatus,HasResults,protocolSection.referencesModule.references",
+            "query.term": refined_input_data.get("other_term", ""),
+            "query.cond": refined_input_data.get("cond", ""),
+            "query.intr": refined_input_data.get("intr", ""),
             "fields": "protocolSection,resultsSection,annotationSection,documentSection,derivedSection,hasResults",
             "format": "json",
             "filter.overallStatus": "COMPLETED",
@@ -16,6 +16,9 @@ def search_ctg(refined_query: dict) -> list:
         }
         print("Searching CTG with params:", params)
         response = requests.get(base_url, params=params)
+        
+        print("CTG search response:", response.text)
+        
         response.raise_for_status()
         data = response.json()
         studies = data.get("studies", [])

@@ -2,16 +2,17 @@ import requests
 from urllib.parse import urlencode
 from utils import sleep_ms, extract_article_content
 from utils import convert_pmcid_to_pmid
-
 from config import TOOL_NAME, TOOL_EMAIL
+import json
 
 def search_pmc(refined_query: dict, pmc_condition_query: str) -> list:
     try:
-        query_string = refined_query.get("query", "")
+        query_string = refined_query.get("combined_query", "")
         condition_query = pmc_condition_query or ""
         combined_query = f"{query_string} AND {condition_query}"
         combined_query = combined_query.replace("+", " ")
         print("Searching PMC with combined query:\n", combined_query)
+        
         sleep_ms(1000)
         search_params = {
             "term": combined_query,
@@ -21,6 +22,9 @@ def search_pmc(refined_query: dict, pmc_condition_query: str) -> list:
         }
         search_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?{urlencode(search_params)}"
         search_response = requests.get(search_url)
+        
+        print("PMC search response:", json.dumps(search_response.text, indent=2))
+        
         search_response.raise_for_status()
         id_list = search_response.json().get("esearchresult", {}).get("idlist", [])
         if not id_list:

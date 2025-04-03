@@ -1,13 +1,11 @@
-This is the user's query for clinical trial papers:
-{{userQuery}}
+The user's input for clinical trial search:
 
-If the user's query is not written in English, translate it to English first. 
-Then, extract the PICO elements and create a PubMed search query.
-Your output should follow this JSON format:
+{{inputData}}
+
+Return your result in JSON format as follows:
 {
-  "P": "xx",
-  "I": "xx",
-  "C": "xx",
-  "O": "xx",
-  "query": "xxxxxx"
+  "cond": refined condition/disease terms,
+  "intr": refined intervention/treatment terms,
+  "other_term": refined other terms,
+  "combined_query": final combined search query created by concatenating the refined 'cond', 'intr', and 'other_term' using the 'AND' operator with parentheses for non-empty fields.
 }

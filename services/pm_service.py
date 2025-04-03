@@ -2,10 +2,11 @@ import requests
 from urllib.parse import urlencode
 from config import TOOL_NAME, TOOL_EMAIL
 from utils import convert_pmid_to_pmcid
+import json
 
 def search_pm(refined_query: dict, pm_condition_query: str) -> list:
     try:
-        query_string = refined_query.get("query", "")
+        query_string = refined_query.get("combined_query", "")
         condition_query = pm_condition_query or ""
         combined_query = f"{query_string} AND {condition_query}"
         combined_query = combined_query.replace("+", " ")
@@ -21,6 +22,9 @@ def search_pm(refined_query: dict, pm_condition_query: str) -> list:
         }
         search_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?{urlencode(search_params)}"
         search_response = requests.get(search_url)
+        
+        print("PubMed search response:", json.dumps(search_response.text, indent=2))
+        
         search_response.raise_for_status()
         id_list = search_response.json().get("esearchresult", {}).get("idlist", [])
         if not id_list:
@@ -35,6 +39,9 @@ def search_pm(refined_query: dict, pm_condition_query: str) -> list:
         }
         summary_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?{urlencode(summary_params)}"
         summary_response = requests.get(summary_url)
+        
+        print("PubMed summary response:", summary_response.text)
+        
         summary_response.raise_for_status()
         summary_data = summary_response.json().get("result", {})
         

@@ -1,13 +1,10 @@
 # /Users/jiwoo/WorkSpace/ClinicalTrialsHub/clinical_trials_hub_web/clinical_trials_hub_backend/services/openai_service.py
-
 import os
 import json
 from pathlib import Path
 from openai import AzureOpenAI  # Assuming AzureOpenAI is installed and configured
-import time
 
 def load_prompt(file_name: str, variables: dict) -> str:
-    # file_name은 prompts 디렉토리 하위의 상대경로 (예: "ie/1_protocol_section/1_identification_module.md")
     prompt_path = Path(__file__).parent.parent / "prompts" / file_name
     with open(prompt_path, "r", encoding="utf-8") as f:
         template = f.read()
@@ -15,9 +12,14 @@ def load_prompt(file_name: str, variables: dict) -> str:
         template = template.replace(f"{{{{{key}}}}}", value)
     return template
 
-def refine_query(user_query: str) -> dict:
+def refine_query(input_data: dict) -> dict:
+    print("openai_service.py - refine_query")
+    print("input_data: ", input_data)
     prompt_system = load_prompt("refine_query_prompt_system.md", {})
-    prompt_user = load_prompt("refine_query_prompt_user.md", {"userQuery": user_query})
+    # input_data 전체를 JSON 문자열로 변환하여 "inputData" 변수에 넣습니다.
+    prompt_user = load_prompt("refine_query_prompt_user.md", {
+        "inputData": json.dumps(input_data, ensure_ascii=False, indent=2)
+    })
     client = AzureOpenAI(
         azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
         api_key=os.getenv("AZURE_OPENAI_API_KEY"),
@@ -37,6 +39,7 @@ def refine_query(user_query: str) -> dict:
     except Exception as e:
         raise Exception("Failed to parse Refined Query response") from e
     return parsed
+
 
 def chat_about_paper(paper_content: str, user_question: str) -> dict:
     prompt = load_prompt("chatAboutPaper.md", {"paperContent": paper_content, "userQuestion": user_question})
