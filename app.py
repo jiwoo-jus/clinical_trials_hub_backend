@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routes import search_routes, paper_routes, chat_routes
+import time
 
 # Load environment variables
 load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
@@ -41,7 +42,11 @@ sys.stderr = LoggerWriter(logger.error)
 app = FastAPI()
 
 # CORS configuration
-origins = ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:3003", "http://localhost:3030", "http://localhost:3031", "http://localhost:3032", "http://localhost:3033"]
+origins = [
+    "http://localhost:3000",  # Local development address1
+    "http://localhost:3333",  # Local development address2
+    "https://clinical-trials-hub-demo.vercel.app"  # Vercel deployment address
+]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -57,8 +62,8 @@ app.include_router(chat_routes.router, prefix="/api/chat")
 
 @app.get("/test")
 async def test_endpoint():
-    logger.info("Test endpoint accessed")
-    print("This is a test print statement.")
+    current_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+    logger.info(f"Test endpoint accessed at {current_time}")
     return {"message": "CORS works!"}
 
 if __name__ == "__main__":
