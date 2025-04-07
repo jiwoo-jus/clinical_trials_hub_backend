@@ -79,7 +79,6 @@ def get_pm_abstract(pmid):
         # 그 속에 있는 <AbstractText> 태그를 찾아서 Label을 key로, Text를 value로 하는 딕셔너리로 변환
         if abstract:
             abstract_dict = {abstract_text.get('Label'): abstract_text.text for abstract_text in abstract.find_all('AbstractText')}
-            print(f"Abstract for PMID {pmid}:", abstract_dict)
             return abstract_dict
         else:
             print(f"No abstract found for PMID {pmid}")

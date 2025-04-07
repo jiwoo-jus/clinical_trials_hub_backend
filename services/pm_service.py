@@ -7,7 +7,7 @@ import json
 NCBI_ESEARCH = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
 NCBI_ESUMMARY = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi"
 
-def search_pm(combined_query, condition_query=None, journal=None, sex=None, age=None, date_from=None, date_to=None, page=1, page_size=10, sort="relevance"):
+def search_pm(combined_query, condition_query=None, journal=None, sex=None, age=None, date_from=None, date_to=None, page=1, page_size=10, sort='relevance', sort_order=None):
     try:
         term = combined_query.replace("+", " ")
         if condition_query:
@@ -30,11 +30,13 @@ def search_pm(combined_query, condition_query=None, journal=None, sex=None, age=
             "retmode": "json",
             "retstart": retstart,
             "retmax": page_size,
-            "sort": sort
+            "sort": sort,
+            "sort_order":sort_order,
         }
         print("Searching PubMed with combined query:\n", search_params)
         search_response = requests.get(NCBI_ESEARCH, params=search_params).json()
         id_list = search_response["esearchresult"]["idlist"]
+        print("PubMed search response:", search_response)
         total = int(search_response["esearchresult"]["count"])
         print("PubMed search response:", total, id_list)
         if not id_list:
@@ -44,10 +46,12 @@ def search_pm(combined_query, condition_query=None, journal=None, sex=None, age=
         summary_params = {
             "db": "pubmed",
             "id": ",".join(id_list),
-            "retmode": "json"
+            "retmode": "json",
+            "sort": sort,
+            "sort_order":sort_order,
         }
         summary_response = requests.get(NCBI_ESUMMARY, params=summary_params).json()
-        print("PubMed summary response:", summary_response)
+        # print("PubMed summary response:", summary_response)
         
         
         results = []
