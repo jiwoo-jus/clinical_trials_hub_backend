@@ -42,11 +42,7 @@ sys.stderr = LoggerWriter(logger.error)
 app = FastAPI()
 
 # CORS configuration
-origins = [
-    "http://localhost:3000",  # Local development address1
-    "http://localhost:3333",  # Local development address2
-    "https://clinical-trials-hub-demo.vercel.app"  # Vercel deployment address
-]
+origins = os.getenv("CORS_ORIGINS", "").split(",")  # Read from .env and split by comma
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
