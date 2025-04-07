@@ -1,70 +1,72 @@
 import requests
 from urllib.parse import urlencode
 from config import TOOL_NAME, TOOL_EMAIL
-from utils import convert_pmid_to_pmcid
+from utils import convert_pmid_to_pmcid, get_pm_abstract
 import json
 
-def search_pm(refined_query: dict, pm_condition_query: str) -> list:
+NCBI_ESEARCH = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
+NCBI_ESUMMARY = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi"
+
+def search_pm(combined_query, condition_query=None, journal=None, sex=None, age=None, date_from=None, date_to=None, page=1, page_size=10, sort="relevance"):
     try:
-        query_string = refined_query.get("combined_query", "")
-        condition_query = pm_condition_query or ""
-        combined_query = f"{query_string} AND {condition_query}"
-        combined_query = combined_query.replace("+", " ")
-        print("Searching PubMed with combined query:\n", combined_query)
-        
+        term = combined_query.replace("+", " ")
+        if condition_query:
+            term += f" AND {condition_query}"
+        if journal:
+            term += f' AND "{journal}"[ta]'
+        if sex:
+            term += f' AND {sex}[filter]'
+        if age:
+            term += f' AND {age}[filter]'
+        if date_from or date_to:
+            # Format dates as YYYY/MM/DD
+            df = date_from or "1800/01/01"
+            dt = date_to or "3000/01/01"
+            term += f' AND ({df}:{dt}[dp])'
+        retstart = (page - 1) * page_size
         search_params = {
-            "term": combined_query,
-            "retmode": "json",
-            "retmax": "5",
             "db": "pubmed",
-            "tool": TOOL_NAME,
-            "email": TOOL_EMAIL
+            "term": term,
+            "retmode": "json",
+            "retstart": retstart,
+            "retmax": page_size,
+            "sort": sort
         }
-        search_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?{urlencode(search_params)}"
-        search_response = requests.get(search_url)
-        
-        print("PubMed search response:", json.dumps(search_response.text, indent=2))
-        
-        search_response.raise_for_status()
-        id_list = search_response.json().get("esearchresult", {}).get("idlist", [])
+        print("Searching PubMed with combined query:\n", search_params)
+        search_response = requests.get(NCBI_ESEARCH, params=search_params).json()
+        id_list = search_response["esearchresult"]["idlist"]
+        total = int(search_response["esearchresult"]["count"])
+        print("PubMed search response:", total, id_list)
         if not id_list:
-            return []
+            print("No results found in PubMed.")
+            return {"results": [], "total": 0, "page": page, "page_size": page_size, "applied_query": term}
         
         summary_params = {
             "db": "pubmed",
             "id": ",".join(id_list),
-            "retmode": "json",
-            "tool": TOOL_NAME,
-            "email": TOOL_EMAIL
+            "retmode": "json"
         }
-        summary_url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?{urlencode(summary_params)}"
-        summary_response = requests.get(summary_url)
+        summary_response = requests.get(NCBI_ESUMMARY, params=summary_params).json()
+        print("PubMed summary response:", summary_response)
         
-        print("PubMed summary response:", summary_response.text)
         
-        summary_response.raise_for_status()
-        summary_data = summary_response.json().get("result", {})
-        
-        summaries = []
-        for pmid in summary_data.get("uids", []):
-            info = summary_data.get(pmid)
-            if not info:
+        results = []
+        for pmid, info in summary_response["result"].items():
+            if pmid == "uids": 
                 continue
-            doi = None
-            articleids = info.get("articleids", [])
-            for article in articleids:
-                if article.get("idtype") == "doi":
-                    doi = article.get("value")
-                    break
-            summaries.append({
+            results.append({
                 "source": "PM",
                 "id": pmid,
                 "pmid": pmid,
                 "pmcid": convert_pmid_to_pmcid(pmid),
-                "doi": doi,
-                "title": info.get("title", "")
-            })
-        return summaries
+                "title": info.get("title"),
+                "journal": info.get("fulljournalname"),
+                "authors": [au.get("name") for au in info.get("authors", [])],
+                "pubDate": info.get("pubdate"),
+                "score": None,  # (PubMed API doesn’t return a numeric relevance score; can leave None or compute if needed)
+                "abstract": get_pm_abstract(pmid)
+            })    
+        return {"results": results, "total": total, "page": page, "page_size": page_size, "applied_query": term}
     except Exception as e:
         print("PubMed API error:", str(e))
-        return []
+        return {"results": [], "total": 0, "page": page, "page_size": page_size, "applied_query": term}
