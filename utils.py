@@ -1,4 +1,4 @@
-import time
+import time, re
 from bs4 import BeautifulSoup
 import requests
 from urllib.parse import urlencode
@@ -86,3 +86,21 @@ def get_pm_abstract(pmid):
     else:
         print(f"Failed to fetch PubMed data for {pmid}")
         return None
+
+def highlight_evidence_in_html(html: str, evidences: list) -> str:
+    """
+    For each evidence sentence, find sentences in the HTML (ignoring tags)
+    that start or end with the evidence text and wrap them with <mark>.
+    This is a naive implementation and may require refinement.
+    """
+    def replace_sentence(match):
+        sentence = match.group(0)
+        for evidence in evidences:
+            evidence = evidence.strip()
+            if sentence.strip().startswith(evidence) or sentence.strip().endswith(evidence):
+                return f"<mark>{sentence}</mark>"
+        return sentence
+
+    # Use a regex to find sentences ending with period, question or exclamation marks.
+    highlighted_html = re.sub(r'([^<>\n]+[.?!])', replace_sentence, html)
+    return highlighted_html
