@@ -1,3 +1,4 @@
+from fastapi import Response
 import requests
 from urllib.parse import urlencode
 from utils import sleep_ms, extract_article_content
@@ -83,7 +84,7 @@ def get_pmc_full_text_xml(pmcid: str) -> str:
         print("PMC full text API error:", str(e))
         return "Error retrieving full text."
 
-def get_pmc_full_text_html(pmcid: str) -> str:
+def get_pmc_full_text_html(pmcid: str):
     try:
         print(f"[get_PMC_html] Using PMCID: {pmcid}")
         url = f"https://pmc.ncbi.nlm.nih.gov/articles/{pmcid}/"
@@ -92,9 +93,7 @@ def get_pmc_full_text_html(pmcid: str) -> str:
         }
         response = requests.get(url, headers=headers)
         response.raise_for_status()
-        full_html = response.text
-        article_html = extract_article_content(full_html)
-        return article_html
+        return response.text
     except requests.exceptions.HTTPError as http_err:
         print(f"HTTP error occurred: {http_err}")
         return f"Error retrieving article detail: {http_err}"

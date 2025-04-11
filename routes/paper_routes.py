@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import HTMLResponse
 from services import pmc_service, openai_service, test_service
 import json
 
@@ -9,7 +10,7 @@ router = APIRouter()
 async def get_pmc_full_text_html(pmcid: str):
     try:
         html_content = pmc_service.get_pmc_full_text_html(pmcid)
-        return {"pmcid": pmcid, "pmc_full_text_html": html_content}
+        return HTMLResponse(content=html_content, status_code=200)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
