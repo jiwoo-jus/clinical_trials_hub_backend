@@ -1,4 +1,3 @@
-# /Users/jiwoo/WorkSpace/ClinicalTrialsHub/clinical_trials_hub_web/clinical_trials_hub_backend/routes/search_routes.py
 import os
 from fastapi import APIRouter, HTTPException, Request
 from services import openai_service, pm_service, pmc_service, ctg_service
@@ -12,21 +11,22 @@ async def search(request: Request):
         data = await request.json()
         print("Received data:", data)
         
-        # 기존 검색 필터들
         input_data = {
-            "cond": data.get("cond", ""),
-            "intr": data.get("intr", ""),
-            "other_term": data.get("other_term", ""),
-            "journal": data.get("journal", ""),
-            "sex": data.get("sex", ""),
-            "age": data.get("age", ""),
-            "studyType": data.get("studyType", ""),
-            "sponsor": data.get("sponsor", ""),
-            "location": data.get("location", ""),
-            "status": data.get("status", "")
+            "cond": data.get("cond", None),
+            "intr": data.get("intr", None),
+            "other_term": data.get("other_term", None),
+            "journal": data.get("journal", None),
+            "sex": data.get("sex", None),
+            "age": data.get("age", None),
+            "studyType": data.get("studyType", None),
+            "sponsor": data.get("sponsor", None),
+            "location": data.get("location", None),
+            "status": data.get("status", None)
         }
+        print("input_data:", input_data)
+
         
-        # 리파인 파라미터: 기존 필터 외에 user_query도 추가 (프론트엔드에서 전송된 값)
+        # Prepare parameters for query refinement, including user_query from the frontend
         refine_param = {
             "cond": input_data.get("cond"),
             "intr": input_data.get("intr"),
@@ -34,19 +34,19 @@ async def search(request: Request):
             "user_query": data.get("user_query", "")
         }
         
-        # refined 여부에 따라 정제된 쿼리 재사용
+        # Use refined query if already refined, otherwise perform refinement
         is_refined = data.get("isRefined", False)
         if is_refined and "refinedQuery" in data and data["refinedQuery"]:
             refined_input_data = data["refinedQuery"]
-            print("already refined. skip refining.")
+            print("Already refined. Skipping refinement step.")
         else:
             refined_input_data = openai_service.refine_query(refine_param)
             print("refined_input_data:", refined_input_data)
         
-        # 페이지네이션 값
+        # Pagination parameters
         page = int(data.get("page", 1))
         page_size = int(data.get("pageSize", 10))
-        # CTG 페이지 토큰 (프론트엔드에서 전달됨)
+        # CTG pagination token from frontend if provided
         ctg_page_token = data.get("ctgPageToken", None)
         
         pm_temp_data = {
@@ -60,13 +60,13 @@ async def search(request: Request):
         }
         ctg_temp_data = {
             "study_type": "int obs", 
-            "gender": "Male",  # 추후 수정 필요
+            "gender": "Male",  # Modify as needed
             "ages": "child adult older",
             "sponsor": "National Institute of Health",
             "location": "Columbus, Ohio", 
             "status": "COMPLETED,TERMINATED",
-            "date_range": None,  # 추후 수정 필요
-            "page_token": None,  # 프론트엔드 전달값 사용
+            "date_range": None,  # Modify as needed
+            "page_token": None,  # Will be provided from frontend
             "sort": "@relevance"
         }
         
@@ -74,10 +74,10 @@ async def search(request: Request):
         with open(os.path.join(base_dir, "../queries/pmConditionQuery.md"), "r", encoding="utf-8") as f:
             pm_condition_query = f.read()
         
-        # 다중 검색 소스: 기본은 모두 선택, 프론트엔드에서 배열 형태로 전달
+        # Determine search sources from payload; default to all
         sources = data.get("sources", ["PM", "PMC", "CTG"])
         
-        # PubMed 검색 (PM)
+        # PubMed (PM) search
         pm_results = {}
         if "PM" in sources:
             pm_results = pm_service.search_pm(
@@ -93,9 +93,8 @@ async def search(request: Request):
                 sort=pm_temp_data.get("sort"),
                 sort_order=pm_temp_data.get("sort_order")
             )
-        # PMC 검색은 필요에 따라 추가
         
-        # ClinicalTrials.gov (CTG) 검색
+        # ClinicalTrials.gov (CTG) search
         ctg_results = {}
         if "CTG" in sources:
             ctg_results = ctg_service.search_ctg(
@@ -120,9 +119,6 @@ async def search(request: Request):
                 "total": pm_results.get("total", 0),
                 "query": pm_results.get("applied_query", "")
             },
-            # pmc_results = {}
-            # if "PMC" in sources:
-            #     pmc_results = pmc_service.search_pmc(...)
             "ctg": {
                 "results": ctg_results.get("results", []),
                 "total": ctg_results.get("total", 0),
