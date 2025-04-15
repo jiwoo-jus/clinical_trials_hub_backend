@@ -19,8 +19,8 @@ async def get_pmc_full_text_html(pmcid: str):
 async def get_structured_info(pmcid: str):
     try:
         content = pmc_service.get_pmc_full_text_xml(pmcid)
-        structured_info = openai_service.get_structured_info_with_cache(pmcid, content)
-        # structured_info = test_service.extract_structured_info(content)
+        # 비동기 함수를 await 하여 올바르게 호출합니다.
+        structured_info = await openai_service.get_structured_info_with_cache(pmcid, content)
         print("Structured Info:", json.dumps(structured_info, indent=2))
         return {"pmcid": pmcid, "structured_info": structured_info}
     except Exception as e:
@@ -30,8 +30,7 @@ async def get_structured_info(pmcid: str):
 async def get_ctg_detail(nctId: str):
     try:
         detail = ctg_service.get_ctg_detail(nctId)
-        # You might decide whether to include the entire detail object or extract specific fields.
+        # 필요한 경우 detail에서 특정 필드를 추출할 수 있습니다.
         return {"nctId": nctId, "structured_info": detail, "full_text": ""}
     except Exception as e:
-        # Log the error on the backend and send a proper message to the client.
         raise HTTPException(status_code=500, detail=str(e))
