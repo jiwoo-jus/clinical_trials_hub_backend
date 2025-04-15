@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
-from services import pmc_service, openai_service, test_service
+from services import ctg_service, pmc_service, openai_service, test_service
 import json
 
 router = APIRouter()
@@ -24,4 +24,14 @@ async def get_structured_info(pmcid: str):
         print("Structured Info:", json.dumps(structured_info, indent=2))
         return {"pmcid": pmcid, "structured_info": structured_info}
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/ctg_detail")
+async def get_ctg_detail(nctId: str):
+    try:
+        detail = ctg_service.get_ctg_detail(nctId)
+        # You might decide whether to include the entire detail object or extract specific fields.
+        return {"nctId": nctId, "structured_info": detail, "full_text": ""}
+    except Exception as e:
+        # Log the error on the backend and send a proper message to the client.
         raise HTTPException(status_code=500, detail=str(e))

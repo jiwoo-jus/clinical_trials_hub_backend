@@ -80,3 +80,19 @@ def search_ctg(term, cond, intr, study_type=None, gender=None, ages=None, sponso
         })
     print("CTG search results:", {"total": total, "nextPageToken": next_token, "applied_query": params})
     return {"results": results, "total": total, "nextPageToken": next_token, "applied_query": params}
+
+def get_ctg_detail(nctId: str) -> dict:
+    params = {
+        "query.nctId": nctId,
+        "format": "json"
+    }
+    response = requests.get(CT_SEARCH_URL, params=params)
+    if response.status_code != 200:
+        logging.error(f"CTG API returned status {response.status_code}")
+        logging.error(f"Response content: {response.text}")
+        raise Exception("CTG API returned non-200 status")
+    json_data = response.json()
+    studies = json_data.get("studies", [])
+    if not studies:
+        raise Exception(f"No CTG detail found for nctId {nctId}")
+    return studies[0]
