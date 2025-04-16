@@ -5,7 +5,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes import search_routes, paper_routes, chat_routes
+from routes import search_routes, paper_routes, chat_routes, utils_routes
 import time
 
 # Load environment variables
@@ -42,11 +42,7 @@ sys.stderr = LoggerWriter(logger.error)
 app = FastAPI()
 
 # CORS configuration
-origins = [
-    "http://localhost:3000",  # Local development address1
-    "http://localhost:3333",  # Local development address2
-    "https://clinical-trials-hub-demo.vercel.app"  # Vercel deployment address
-]
+origins = os.getenv("CORS_ORIGINS", "").split(",")  # Read from .env and split by comma
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -59,6 +55,7 @@ app.add_middleware(
 app.include_router(search_routes.router, prefix="/api/search")
 app.include_router(paper_routes.router, prefix="/api/paper")
 app.include_router(chat_routes.router, prefix="/api/chat")
+app.include_router(utils_routes.router, prefix="/api/utils", tags=["utilities"])
 
 @app.get("/test")
 async def test_endpoint():
