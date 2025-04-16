@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import requests
 from urllib.parse import urlencode
 from config import TOOL_NAME, TOOL_EMAIL
+from typing import List, Dict, Any # Import List, Dict, Any
 
 def sleep_ms(milliseconds: int):
     """Sleep for the given number of milliseconds."""
@@ -14,11 +15,17 @@ def extract_article_content(html: str) -> str:
     article_tag = soup.find('article')
     return str(article_tag) if article_tag else html
 
-def convert_pmid_to_pmcid(pmid: str) -> str:
+def convert_pmid_to_pmcid(pmids: str) -> List[Dict[str, Any]]: # Changed parameter name and return type hint
+    """
+    Converts a comma-separated string of PMIDs to a list of PMC records
+    containing PMCID and other details using the NCBI ID Converter API.
+    """
+    if not pmids:
+        return []
     try:
         url = "https://www.ncbi.nlm.nih.gov/pmc/utils/idconv/v1.0/"
         params = {
-            "ids": pmid,
+            "ids": pmids, # Use the pmids parameter directly
             "format": "json",
             "tool": TOOL_NAME,
             "email": TOOL_EMAIL
@@ -27,14 +34,14 @@ def convert_pmid_to_pmcid(pmid: str) -> str:
         response.raise_for_status()
         data = response.json()
         records = data.get("records", [])
-        if records and records[0].get("pmcid"):
-            return records[0]["pmcid"]
-        else:
-            print(f"No PMCID found for PMID {pmid}")
-            return None
+        print(f"NCBI ID Converter records for PMIDs '{pmids}': {records}") # Log the received records
+        return records # Return the entire list of records
+    except requests.exceptions.RequestException as e:
+        print(f"Error calling NCBI ID Converter API for PMIDs '{pmids}': {e}")
+        return [] # Return empty list on API error
     except Exception as e:
-        print("Error converting PMID to PMCID:", e)
-        return None
+        print(f"Error processing PMIDs '{pmids}' for PMCID conversion: {e}")
+        return [] # Return empty list on other errors
 
 def convert_pmcid_to_pmid(pmcid: str) -> str:
     try:
