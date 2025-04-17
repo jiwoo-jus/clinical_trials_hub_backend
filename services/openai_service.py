@@ -43,28 +43,72 @@ def refine_query(input_data: dict) -> dict:
         raise Exception("Failed to parse Refined Query response") from e
     return parsed
 
+# Modified function to accept prompt template name and variables
+def chat_with_prompt(prompt_template_name: str, variables: dict) -> dict:
+    prompt = load_prompt(prompt_template_name, variables)
+    user_question = variables.get("userQuestion", "N/A") # Get user question for logging
+    print(f"[openai_service.py - chat_with_prompt] Template: {prompt_template_name}, User Question: {user_question}")
+    # print(f"Prompt: {prompt}") # Optional: Log the full prompt for debugging
 
-def chat_about_paper(paper_content: str, user_question: str) -> dict:
-    prompt = load_prompt("chatAboutPaper.md", {"paperContent": paper_content, "userQuestion": user_question})
     client = AzureOpenAI(
         azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
         api_key=os.getenv("AZURE_OPENAI_API_KEY"),
         api_version=os.getenv("AZURE_OPENAI_API_VERSION")
     )
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant that answers questions about clinical trial study papers."},
-            {"role": "user", "content": prompt}
-        ],
-        response_format={"type": "json_object"}
-    )
-    result_text = response.choices[0].message.content.strip()
     try:
-        parsed = json.loads(result_text)
-    except Exception:
-        parsed = {"answer": result_text, "evidence": []}
-    return parsed
+        response = client.chat.completions.create(
+            model="gpt-4o", # Or your preferred model
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant answering questions based on provided clinical trial information (either text or structured JSON). Follow the user's instructions precisely regarding format and evidence."},
+                {"role": "user", "content": prompt}
+            ],
+            response_format={"type": "json_object"}
+        )
+        result_text = response.choices[0].message.content.strip()
+        print(f"[openai_service.py - chat_with_prompt] Raw LLM Response: {result_text}")
+        try:
+            parsed = json.loads(result_text)
+            # Basic validation
+            if not isinstance(parsed, dict) or "answer" not in parsed or "evidence" not in parsed:
+                 print(f"[openai_service.py - chat_with_prompt] Warning: Parsed JSON missing required keys. Parsed: {parsed}")
+                 # Fallback or correction logic can be added here
+                 parsed = {"answer": "Error: Received unexpected format from AI.", "evidence": []}
+
+            print(f"[openai_service.py - chat_with_prompt] Parsed Response: {parsed}")
+        except json.JSONDecodeError:
+            print(f"[openai_service.py - chat_with_prompt] Failed to parse JSON response: {result_text}")
+            # Fallback if JSON parsing fails
+            parsed = {"answer": result_text, "evidence": []}
+        return parsed
+    except Exception as e:
+        print(f"[openai_service.py - chat_with_prompt] Error during OpenAI API call: {e}")
+        # Handle API errors gracefully
+        return {"answer": f"Error communicating with AI service: {e}", "evidence": []}
+
+
+# Keep the old function signature for compatibility if needed, or refactor calls
+# This function is now a wrapper deciding which prompt to use
+def chat_about_paper(source: str, paper_content: str, user_question: str) -> dict:
+    if source == 'CTG':
+        # Use the new prompt for structured CTG data
+        print("[openai_service.py - chat_about_paper] Using CTG structured info prompt.")
+        # Ensure paper_content is valid JSON string for the prompt
+        try:
+            # Validate/load JSON to ensure it's well-formed before passing
+            json.loads(paper_content)
+            variables = {"structuredInfo": paper_content, "userQuestion": user_question}
+            return chat_with_prompt("chatAboutCtgStructuredInfo.md", variables)
+        except json.JSONDecodeError:
+             print("[openai_service.py - chat_about_paper] Error: CTG content is not valid JSON.")
+             return {"answer": "Error: Could not process the provided ClinicalTrials.gov data (invalid format).", "evidence": []}
+    elif source in ['PM', 'PMC']:
+        # Use the original prompt for PubMed/PMC full text
+        print("[openai_service.py - chat_about_paper] Using paper content prompt.")
+        variables = {"paperContent": paper_content, "userQuestion": user_question}
+        return chat_with_prompt("chatAboutPaper.md", variables)
+    else:
+        print(f"[openai_service.py - chat_about_paper] Error: Unknown source type '{source}'.")
+        return {"answer": f"Error: Unknown data source '{source}'.", "evidence": []}
 
 # Pass the AsyncAzureOpenAI client instance
 async def process_prompt_file(prompt_file: str, paper_content: str, client: AsyncAzureOpenAI) -> dict:

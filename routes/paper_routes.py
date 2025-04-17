@@ -21,7 +21,6 @@ async def get_structured_info(pmcid: str):
         content = pmc_service.get_pmc_full_text_xml(pmcid)
         # 비동기 함수를 await 하여 올바르게 호출합니다.
         structured_info = await openai_service.get_structured_info_with_cache(pmcid, content)
-        print("Structured Info:", json.dumps(structured_info, indent=2))
         return {"pmcid": pmcid, "structured_info": structured_info}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

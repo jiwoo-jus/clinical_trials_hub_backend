@@ -109,7 +109,6 @@ def search_pm(combined_query, condition_query=None, journal=None, sex=None, age=
         # Build the final results list
         results = []
         for pmid, info in summary_response["result"].items():
-            print("esummary result:", pmid, info)
             if pmid == "uids":
                 continue
 

@@ -1,30 +1,50 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Body # Import Body
+from pydantic import BaseModel, Field # Import Pydantic models
 from services import openai_service, pm_service, pmc_service
 import json
-from utils import highlight_evidence_in_html
+# Remove highlight_evidence_in_html if not needed for CTG JSON
+# from utils import highlight_evidence_in_html
 
 router = APIRouter()
 
+# Define request model for better validation
+class ChatRequest(BaseModel):
+    userQuestion: str
+    source: str = Field(..., pattern="^(CTG|PM|PMC)$") # Validate source
+    id: str # nctId or pmcid
+    content: str # Can be JSON string or HTML/text
+
 @router.post("/")
-async def chat_about_paper(request: Request):
+# Use the Pydantic model for automatic validation
+async def chat_about_paper(chat_request: ChatRequest):
     try:
-        data = await request.json()
-        user_question = data.get("userQuestion", "")
-        print("user_question: ", user_question)
-        if "content" in data:
-            paper_content = data["content"]
-            if isinstance(paper_content, dict):
-                paper_content = json.dumps(paper_content, indent=2)
-        else:
-            paper_id = data.get("paperId", "")
-            paper_content = pmc_service.get_pmc_full_text_xml(paper_id)
-        result = openai_service.chat_about_paper(paper_content, user_question)
-        # Highlight evidence sentences in the article HTML.
-        if "evidence" in result and result["evidence"]:
-            result["highlighted_article"] = highlight_evidence_in_html(paper_content, result["evidence"])
-        else:
-            result["highlighted_article"] = paper_content
+        print(f"Received chat request for source: {chat_request.source}, id: {chat_request.id}")
+        # Data is already validated and parsed by Pydantic
+        user_question = chat_request.userQuestion
+        paper_content = chat_request.content
+        source = chat_request.source
+        # id = chat_request.id # ID is available if needed later
+
+        # Pass source to the service function
+        result = openai_service.chat_about_paper(source, paper_content, user_question)
+
+        # Highlighting might not make sense for JSON evidence from CTG
+        # Conditionally apply highlighting only for PM/PMC sources if needed
+        # if source in ['PM', 'PMC'] and "evidence" in result and result["evidence"]:
+        #     # Assuming highlight_evidence_in_html works with the paper_content format for PM/PMC
+        #     result["highlighted_article"] = highlight_evidence_in_html(paper_content, result["evidence"])
+        # else:
+        #     # For CTG or if no evidence, just return the original content or null/empty
+        #     result["highlighted_article"] = None # Or paper_content if you want to return the JSON
+
+        # Let's remove highlighted_article for now to simplify, as it's complex for JSON
+        if "highlighted_article" in result:
+             del result["highlighted_article"]
+
         return result
     except Exception as e:
-        print("Error in chat route:", str(e))
-        raise HTTPException(status_code=500, detail="Server error")
+        print(f"Error in chat route: {type(e).__name__} - {str(e)}")
+        # Consider logging the full traceback for debugging
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Server error processing chat request: {str(e)}")
