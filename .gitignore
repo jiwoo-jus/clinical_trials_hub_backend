@@ -30,6 +30,6 @@ logs/
 # test_service.py
 sample
 cache
-
+TEMP
 *copy*
 *test*

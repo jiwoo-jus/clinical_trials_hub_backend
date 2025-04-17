@@ -1,9 +1,11 @@
 import requests
 from urllib.parse import urlencode
 from config import TOOL_NAME, TOOL_EMAIL
-from utils import convert_pmid_to_pmcid  # Still using this helper to convert IDs
+# Remove the import for convert_pmid_to_pmcid as it's no longer needed here
+# from utils import convert_pmid_to_pmcid
 from bs4 import BeautifulSoup
 import time
+import re # Import the re module for regex matching
 
 NCBI_ESEARCH = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
 NCBI_ESUMMARY = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi"
@@ -107,19 +109,55 @@ def search_pm(combined_query, condition_query=None, journal=None, sex=None, age=
         # Build the final results list
         results = []
         for pmid, info in summary_response["result"].items():
+            print("esummary result:", pmid, info)
             if pmid == "uids":
                 continue
+
+            # Extract PMCID from articleids in esummary response
+            pmcid_value = None
+            article_ids = info.get("articleids", [])
+            id_type_priority = ["pmc", "pmcid"] # Prioritize 'pmc' then 'pmcid'
+
+            for id_type in id_type_priority:
+                for article_id in article_ids:
+                    if article_id.get("idtype") == id_type:
+                        value = article_id.get("value")
+                        # Check if the value matches the PMC format (PMC followed by digits)
+                        match = re.match(r'PMC\d+', value)
+                        if match:
+                            pmcid_value = match.group(0) # Extract the matched PMC ID
+                            break # Found a valid PMCID, stop checking this item's IDs
+                if pmcid_value:
+                    break # Found a valid PMCID from the prioritized list, stop checking types
+
+            # Fallback check for 'pmc-id:' format if not found yet
+            if not pmcid_value:
+                 for article_id in article_ids:
+                    if article_id.get("idtype") == "pmcid": # Check 'pmcid' type again for the specific format
+                        value = article_id.get("value")
+                        # Look for 'pmc-id: PMC...' pattern
+                        match = re.search(r'pmc-id:\s*(PMC\d+)', value)
+                        if match:
+                            pmcid_value = match.group(1) # Extract the PMC ID part
+                            break
+                 if pmcid_value:
+                     print(f"Extracted PMCID {pmcid_value} using fallback 'pmc-id:' pattern for PMID {pmid}")
+
+
             results.append({
                 "source": "PM",
                 "id": pmid,
                 "pmid": pmid,
-                "pmcid": convert_pmid_to_pmcid(pmid),
+                # Use the extracted pmcid_value
+                "pmcid": pmcid_value,
                 "title": info.get("title"),
                 "journal": info.get("fulljournalname"),
                 "authors": [au.get("name") for au in info.get("authors", [])],
                 "pubDate": info.get("pubdate"),
                 "score": None,  # PubMed API does not provide a relevance score
-                "abstract": abstract_dict_by_pmid.get(pmid)
+                "abstract": abstract_dict_by_pmid.get(pmid),
+                # Add doi if available in articleids
+                "doi": next((item.get("value") for item in article_ids if item.get("idtype") == "doi"), None)
             })
         return {"results": results, "total": total, "page": page, "page_size": page_size, "applied_query": term}
     except Exception as e:
