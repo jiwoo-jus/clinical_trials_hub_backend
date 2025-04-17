@@ -59,7 +59,7 @@ def chat_with_prompt(prompt_template_name: str, variables: dict) -> dict:
         response = client.chat.completions.create(
             model="gpt-4o", # Or your preferred model
             messages=[
-                {"role": "system", "content": "You are a helpful assistant answering questions based on provided clinical trial information (either text or structured JSON). Follow the user's instructions precisely regarding format and evidence."},
+                {"role": "system", "content": "You are a helpful assistant answering questions based on provided clinical trial information. Follow the user's instructions precisely regarding format and evidence."},
                 {"role": "user", "content": prompt}
             ],
             response_format={"type": "json_object"}
@@ -70,9 +70,9 @@ def chat_with_prompt(prompt_template_name: str, variables: dict) -> dict:
             parsed = json.loads(result_text)
             # Basic validation
             if not isinstance(parsed, dict) or "answer" not in parsed or "evidence" not in parsed:
-                 print(f"[openai_service.py - chat_with_prompt] Warning: Parsed JSON missing required keys. Parsed: {parsed}")
-                 # Fallback or correction logic can be added here
-                 parsed = {"answer": "Error: Received unexpected format from AI.", "evidence": []}
+                print(f"[openai_service.py - chat_with_prompt] Warning: Parsed JSON missing required keys. Parsed: {parsed}")
+                # Fallback or correction logic can be added here
+                parsed = {"answer": "Error: Received unexpected format from AI.", "evidence": []}
 
             print(f"[openai_service.py - chat_with_prompt] Parsed Response: {parsed}")
         except json.JSONDecodeError:
@@ -99,8 +99,8 @@ def chat_about_paper(source: str, paper_content: str, user_question: str) -> dic
             variables = {"structuredInfo": paper_content, "userQuestion": user_question}
             return chat_with_prompt("chatAboutCtgStructuredInfo.md", variables)
         except json.JSONDecodeError:
-             print("[openai_service.py - chat_about_paper] Error: CTG content is not valid JSON.")
-             return {"answer": "Error: Could not process the provided ClinicalTrials.gov data (invalid format).", "evidence": []}
+            print("[openai_service.py - chat_about_paper] Error: CTG content is not valid JSON.")
+            return {"answer": "Error: Could not process the provided ClinicalTrials.gov data (invalid format).", "evidence": []}
     elif source in ['PM', 'PMC']:
         # Use the original prompt for PubMed/PMC full text
         print("[openai_service.py - chat_about_paper] Using paper content prompt.")
