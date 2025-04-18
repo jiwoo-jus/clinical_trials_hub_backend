@@ -2,14 +2,11 @@ import os
 import sys
 import logging
 from datetime import datetime
-from dotenv import load_dotenv
+import time
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routes import search_routes, paper_routes, chat_routes, utils_routes
-import time
-
-# Load environment variables
-load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
+from config import PORT, CORS_ORIGINS
 
 # Create log directory and configure logging
 log_dir = os.path.join(os.path.dirname(__file__), "logs")
@@ -39,13 +36,13 @@ class LoggerWriter:
 sys.stdout = LoggerWriter(logger.info)
 sys.stderr = LoggerWriter(logger.error)
 
+# Initialize FastAPI app
 app = FastAPI()
 
-# CORS configuration
-origins = os.getenv("CORS_ORIGINS", "").split(",")  # Read from .env and split by comma
+# Configure CORS from environment
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -63,8 +60,8 @@ async def test_endpoint():
     logger.info(f"Test endpoint accessed at {current_time}")
     return {"message": "CORS works!"}
 
+# Local development entry point
 if __name__ == "__main__":
     import uvicorn
-    from config import PORT
     logger.info(f"Starting server on port {PORT}")
     uvicorn.run(app, host="0.0.0.0", port=PORT)
