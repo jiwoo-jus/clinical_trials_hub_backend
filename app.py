@@ -42,8 +42,8 @@ app = FastAPI()
 # Configure CORS from environment
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -66,6 +66,7 @@ def cors_check():
     import os
     return JSONResponse(
         content={
+            "CORS_ORIGINS": CORS_ORIGINS,
             "CORS_ORIGINS_env": os.getenv("CORS_ORIGINS"),
             "effective_allow_origins": ["*"]
         }
@@ -75,4 +76,4 @@ def cors_check():
 if __name__ == "__main__":
     import uvicorn
     logger.info(f"Starting server on port {PORT}")
-    uvicorn.run(app, host="0.0.0.0", port=PORT)
+    uvicorn.run(app, host="0.0.0.0", port=PORT, proxy_headers=True)
