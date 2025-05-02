@@ -16,8 +16,7 @@ def load_prompt(file_name: str, variables: dict) -> str:
     return template
 
 def refine_query(input_data: dict) -> dict:
-    print("openai_service.py - refine_query")
-    print("input_data: ", input_data)
+    print("openai refine_query input_data: ", input_data)
     prompt_system = load_prompt("refine_query_prompt_system.md", {})
     # input_data 전체를 JSON 문자열로 변환하여 "inputData" 변수에 넣습니다.
     prompt_user = load_prompt("refine_query_prompt_user.md", {
